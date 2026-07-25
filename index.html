@@ -1,0 +1,163 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>애정말딸 (각질/거리별)</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <main class="app-shell">
+    <header class="hero">
+      <div>
+        <p class="eyebrow">UMAMUSUME FAVORITE MATRIX</p>
+        <h1>애정말딸 <span>(각질/거리별)</span></h1>
+        <p class="subtitle">
+          단거리·마일·중거리·장거리·더트 × 도주·선행·선입·추입의 20칸에
+          좋아하는 캐릭터를 한 명씩 배치하세요.
+        </p>
+      </div>
+      <div class="completion-box">
+        <strong id="completionCount">0 / 20</strong>
+        <span>선택 완료</span>
+      </div>
+    </header>
+
+    <section class="panel matrix-panel" aria-labelledby="matrixTitle">
+      <div class="section-heading">
+        <div>
+          <h2 id="matrixTitle">애정 배치표</h2>
+          <p>캐릭터를 끌어서 놓거나, 캐릭터를 클릭한 뒤 원하는 칸을 클릭하세요.</p>
+        </div>
+        <div class="button-row compact">
+          <button id="savePngButton" class="button primary" type="button">결과 PNG 저장</button>
+          <button id="exportJsonButton" class="button" type="button">결과 JSON 저장</button>
+          <button id="clearSlotsButton" class="button danger-soft" type="button">배치 초기화</button>
+        </div>
+      </div>
+
+      <div class="matrix-scroll">
+        <div id="favoriteMatrix" class="favorite-matrix" role="grid" aria-label="거리와 각질별 애정 캐릭터 배치표"></div>
+      </div>
+      <p id="selectionHint" class="selection-hint">선택된 캐릭터가 없습니다.</p>
+    </section>
+
+    <section class="panel import-panel" aria-labelledby="importTitle">
+      <div class="section-heading">
+        <div>
+          <h2 id="importTitle">캐릭터 파일 불러오기</h2>
+          <p>앞에서 만든 나무위키 다운로더의 ZIP을 그대로 넣는 방식이 가장 간단합니다.</p>
+        </div>
+      </div>
+
+      <div class="import-grid">
+        <article class="import-card recommended">
+          <span class="badge">권장</span>
+          <h3>다운로더 ZIP 한 번에 불러오기</h3>
+          <p><code>characters.json</code>과 <code>images/</code>가 들어 있는 ZIP을 선택합니다.</p>
+          <label class="file-button">
+            ZIP 파일 선택
+            <input id="zipInput" type="file" accept=".zip,application/zip">
+          </label>
+        </article>
+
+        <article class="import-card">
+          <h3>JSON과 이미지 폴더 따로 불러오기</h3>
+          <p>ZIP을 풀었다면 JSON과 이미지 폴더를 각각 선택할 수 있습니다.</p>
+          <label class="file-button secondary">
+            characters.json 선택
+            <input id="jsonInput" type="file" accept=".json,application/json">
+          </label>
+          <label class="file-button secondary">
+            images 폴더 선택
+            <input id="imageFolderInput" type="file" accept="image/*" multiple webkitdirectory directory>
+          </label>
+          <button id="separateImportButton" class="button" type="button">선택한 파일 불러오기</button>
+        </article>
+      </div>
+
+      <div class="progress-wrap" id="progressWrap" hidden>
+        <div class="progress-line">
+          <strong id="progressText">처리 중...</strong>
+          <span id="progressNumber">0%</span>
+        </div>
+        <progress id="importProgress" max="100" value="0"></progress>
+      </div>
+      <div id="statusBox" class="status-box" role="status">캐릭터 데이터를 불러오면 브라우저에 자동 저장됩니다.</div>
+    </section>
+
+    <section class="panel pool-panel" aria-labelledby="poolTitle">
+      <div class="section-heading pool-heading">
+        <div>
+          <h2 id="poolTitle">보유 캐릭터</h2>
+          <p>배치된 캐릭터도 아래 목록에 남아 있으며, 현재 위치가 표시됩니다.</p>
+        </div>
+        <div class="pool-tools">
+          <label class="search-box">
+            <span>검색</span>
+            <input id="searchInput" type="search" placeholder="캐릭터 이름 검색">
+          </label>
+          <select id="filterSelect" aria-label="캐릭터 표시 필터">
+            <option value="all">전체 보기</option>
+            <option value="unassigned">미배치만</option>
+            <option value="assigned">배치됨만</option>
+            <option value="custom">직접 추가만</option>
+          </select>
+        </div>
+      </div>
+
+      <div id="characterPool" class="character-pool" aria-live="polite">
+        <div class="empty-state">
+          <strong>아직 캐릭터가 없습니다.</strong>
+          <span>위에서 다운로더 ZIP을 불러오거나 아래에서 직접 추가하세요.</span>
+        </div>
+      </div>
+      <div id="poolDropZone" class="pool-drop-zone">배치표에서 캐릭터를 이곳으로 끌어오면 배치가 해제됩니다.</div>
+    </section>
+
+    <section class="panel custom-panel" aria-labelledby="customTitle">
+      <div class="section-heading">
+        <div>
+          <h2 id="customTitle">새 캐릭터 직접 추가</h2>
+          <p>새로 추가된 캐릭터가 데이터에 없다면 이름과 사진을 직접 등록할 수 있습니다.</p>
+        </div>
+      </div>
+
+      <form id="customCharacterForm" class="custom-form">
+        <label>
+          <span>캐릭터 이름</span>
+          <input id="customNameInput" type="text" maxlength="60" placeholder="예: 정글 포켓" required>
+        </label>
+        <label>
+          <span>캐릭터 사진</span>
+          <input id="customImageInput" type="file" accept="image/png,image/jpeg,image/webp,image/gif,image/avif" required>
+        </label>
+        <button class="button primary" type="submit">캐릭터 추가</button>
+      </form>
+      <p class="small-note">직접 추가한 캐릭터는 카드의 휴지통 버튼으로 개별 삭제할 수 있습니다.</p>
+    </section>
+
+    <section class="panel danger-panel">
+      <div>
+        <h2>저장 데이터 관리</h2>
+        <p>이 브라우저에 저장된 캐릭터 이미지와 배치 정보를 모두 삭제합니다.</p>
+      </div>
+      <button id="deleteAllButton" class="button danger" type="button">전체 데이터 삭제</button>
+    </section>
+  </main>
+
+  <template id="poolCardTemplate">
+    <article class="character-card" draggable="true" tabindex="0">
+      <div class="card-image-wrap">
+        <img alt="">
+        <span class="assigned-badge"></span>
+        <button class="delete-character" type="button" title="직접 추가한 캐릭터 삭제" aria-label="캐릭터 삭제">×</button>
+      </div>
+      <strong class="character-name"></strong>
+    </article>
+  </template>
+
+  <script src="jszip.min.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
