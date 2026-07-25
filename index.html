@@ -27,7 +27,7 @@
       <div class="section-heading">
         <div>
           <h2 id="matrixTitle">애정 배치표</h2>
-          <p>캐릭터를 끌어서 놓거나, 캐릭터를 클릭한 뒤 원하는 칸을 클릭하세요.</p>
+          <p>캐릭터를 끌어서 놓거나, 캐릭터를 클릭한 뒤 원하는 칸을 클릭하세요. 아래로 스크롤하면 오른쪽에 빠른 배치표가 표시됩니다.</p>
         </div>
         <div class="button-row compact">
           <button id="savePngButton" class="button primary" type="button">결과 PNG 저장</button>
@@ -45,15 +45,15 @@
     <section class="panel import-panel" aria-labelledby="importTitle">
       <div class="section-heading">
         <div>
-          <h2 id="importTitle">캐릭터 파일 불러오기</h2>
-          <p>앞에서 만든 나무위키 다운로더의 ZIP을 그대로 넣는 방식이 가장 간단합니다.</p>
+          <h2 id="importTitle">기본 캐릭터 데이터</h2>
+          <p>GitHub용 패키지에 캐릭터 139명과 이미지가 포함되어 처음 접속할 때 자동으로 불러옵니다. 아래 기능은 나중에 데이터를 갱신할 때 사용하세요.</p>
         </div>
       </div>
 
       <div class="import-grid">
         <article class="import-card recommended">
-          <span class="badge">권장</span>
-          <h3>다운로더 ZIP 한 번에 불러오기</h3>
+          <span class="badge">선택 사항</span>
+          <h3>새 다운로더 ZIP으로 갱신</h3>
           <p><code>characters.json</code>과 <code>images/</code>가 들어 있는 ZIP을 선택합니다.</p>
           <label class="file-button">
             ZIP 파일 선택
@@ -83,14 +83,14 @@
         </div>
         <progress id="importProgress" max="100" value="0"></progress>
       </div>
-      <div id="statusBox" class="status-box" role="status">캐릭터 데이터를 불러오면 브라우저에 자동 저장됩니다.</div>
+      <div id="statusBox" class="status-box" role="status">GitHub에 포함된 기본 캐릭터 데이터를 확인하는 중입니다.</div>
     </section>
 
     <section class="panel pool-panel" aria-labelledby="poolTitle">
       <div class="section-heading pool-heading">
         <div>
           <h2 id="poolTitle">보유 캐릭터</h2>
-          <p>배치된 캐릭터도 아래 목록에 남아 있으며, 현재 위치가 표시됩니다.</p>
+          <p>배치된 캐릭터도 아래 목록에 남아 있으며, 현재 위치가 표시됩니다. 카드에 마우스를 올리면 DB 적성을 확인할 수 있습니다.</p>
         </div>
         <div class="pool-tools">
           <label class="search-box">
@@ -140,11 +140,25 @@
     <section class="panel danger-panel">
       <div>
         <h2>저장 데이터 관리</h2>
-        <p>이 브라우저에 저장된 캐릭터 이미지와 배치 정보를 모두 삭제합니다.</p>
+        <p>직접 추가한 캐릭터와 배치 정보를 삭제합니다. GitHub에 포함된 기본 캐릭터는 다시 복원됩니다.</p>
       </div>
       <button id="deleteAllButton" class="button danger" type="button">전체 데이터 삭제</button>
     </section>
   </main>
+
+  <aside id="quickMatrixDock" class="quick-matrix-dock" hidden aria-label="빠른 애정 배치표">
+    <div class="quick-dock-header">
+      <div>
+        <strong>빠른 배치표</strong>
+        <span id="quickDockStatus">0 / 20</span>
+      </div>
+      <button id="quickDockToggle" type="button" aria-label="빠른 배치표 접기">−</button>
+    </div>
+    <div id="quickMatrix" class="quick-matrix"></div>
+    <p>캐릭터를 이곳에 바로 끌어다 놓을 수 있습니다.</p>
+  </aside>
+
+  <div id="aptitudeTooltip" class="aptitude-tooltip" role="tooltip" hidden></div>
 
   <template id="poolCardTemplate">
     <article class="character-card" draggable="true" tabindex="0">
@@ -158,6 +172,7 @@
   </template>
 
   <script src="jszip.min.js"></script>
+  <script src="aptitude-data.js"></script>
   <script src="app.js"></script>
 </body>
 </html>

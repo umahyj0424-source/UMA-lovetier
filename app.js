@@ -1,4 +1,4 @@
-/* global JSZip */
+/* global JSZip, UMA_APTITUDE_DB */
 "use strict";
 
 const DISTANCES = ["단거리", "마일", "중거리", "장거리", "더트"];
@@ -8,6 +8,9 @@ const DB_NAME = "uma-love-matrix-db";
 const DB_VERSION = 1;
 const CHARACTER_STORE = "characters";
 const SLOT_STORAGE_KEY = "uma-love-matrix-slots-v1";
+const QUICK_DOCK_COLLAPSED_KEY = "uma-love-matrix-quick-dock-collapsed-v1";
+const BUNDLED_DATA_URL = "./characters.json";
+const BUNDLED_KIND = "bundled";
 
 const matrixEl = document.getElementById("favoriteMatrix");
 const poolEl = document.getElementById("characterPool");
@@ -33,6 +36,11 @@ const deleteAllButton = document.getElementById("deleteAllButton");
 const exportJsonButton = document.getElementById("exportJsonButton");
 const savePngButton = document.getElementById("savePngButton");
 const cardTemplate = document.getElementById("poolCardTemplate");
+const quickMatrixDock = document.getElementById("quickMatrixDock");
+const quickMatrixEl = document.getElementById("quickMatrix");
+const quickDockStatus = document.getElementById("quickDockStatus");
+const quickDockToggle = document.getElementById("quickDockToggle");
+const aptitudeTooltip = document.getElementById("aptitudeTooltip");
 
 let db;
 let characters = [];
@@ -40,6 +48,13 @@ let characterMap = new Map();
 let imageUrls = new Map();
 let slotMap = loadSlotMap();
 let selectedCharacterId = null;
+let draggingCharacterId = null;
+let matrixIsVisible = true;
+let autoScrollSpeed = 0;
+let autoScrollFrame = 0;
+const aptitudeByNormalizedName = new Map(
+  Object.entries(window.UMA_APTITUDE_DB?.characters || {}).map(([name, data]) => [normalizeNameForMatch(name), data])
+);
 
 function slotKey(distance, style) {
   return `${distance}|${style}`;
@@ -157,6 +172,85 @@ function normalizeNameForMatch(value) {
     .replace(/[\\/:*?"<>|()[\]{}_\-\s.]+/g, "");
 }
 
+
+function escapeHtml(value) {
+  return String(value).replace(/[&<>"]/g, (character) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "&quot;" }[character]));
+}
+
+function cleanCharacterName(value) {
+  let name = String(value || "").normalize("NFKC").replace(/\s+/g, " ").trim();
+  const prefixes = [
+    /^(?:\[[^\]]*\]\s*)?(?:우마무스메\s*)?(?:캐릭터\s*)?프로필\s*이미지\s*(?:[:：|·\-–—]\s*)?/i,
+    /^(?:우마무스메\s*)?(?:캐릭터\s*)?이미지\s*(?:[:：|·\-–—]\s*)?/i,
+    /^프로필\s*(?:사진|이미지)\s*(?:[:：|·\-–—]\s*)?/i
+  ];
+
+  let previous;
+  do {
+    previous = name;
+    for (const pattern of prefixes) {
+      name = name.replace(pattern, "").trim();
+    }
+  } while (name !== previous);
+
+  return name || String(value || "").trim();
+}
+
+function getAptitudeForCharacter(character) {
+  return aptitudeByNormalizedName.get(normalizeNameForMatch(cleanCharacterName(character?.name))) || null;
+}
+
+function aptitudeChips(values) {
+  return Object.entries(values)
+    .map(([label, rank]) => `<span class="aptitude-chip"><span>${escapeHtml(label)}</span><b class="aptitude-rank" data-rank="${escapeHtml(rank)}">${escapeHtml(rank)}</b></span>`)
+    .join("");
+}
+
+function aptitudeTooltipHtml(character) {
+  const aptitude = getAptitudeForCharacter(character);
+  if (!aptitude) {
+    return `<h3>${escapeHtml(character.name)}</h3><p class="aptitude-unavailable">첨부된 DB에서 이 이름과 일치하는 적성 정보를 찾지 못했습니다.</p>`;
+  }
+  return `
+    <h3>${escapeHtml(character.name)}</h3>
+    <div class="aptitude-section"><span class="aptitude-section-title">거리</span><div class="aptitude-row">${aptitudeChips(aptitude.distance)}</div></div>
+    <div class="aptitude-section"><span class="aptitude-section-title">마장</span><div class="aptitude-row">${aptitudeChips(aptitude.ground)}</div></div>
+    <div class="aptitude-section"><span class="aptitude-section-title">각질</span><div class="aptitude-row">${aptitudeChips(aptitude.style)}</div></div>`;
+}
+
+function positionAptitudeTooltip(clientX, clientY) {
+  const margin = 12;
+  const offset = 16;
+  const rect = aptitudeTooltip.getBoundingClientRect();
+  let left = clientX + offset;
+  let top = clientY + offset;
+  if (left + rect.width + margin > window.innerWidth) left = clientX - rect.width - offset;
+  if (top + rect.height + margin > window.innerHeight) top = clientY - rect.height - offset;
+  aptitudeTooltip.style.left = `${Math.max(margin, left)}px`;
+  aptitudeTooltip.style.top = `${Math.max(margin, top)}px`;
+}
+
+function showAptitudeTooltip(character, event) {
+  aptitudeTooltip.innerHTML = aptitudeTooltipHtml(character);
+  aptitudeTooltip.hidden = false;
+  positionAptitudeTooltip(event.clientX, event.clientY);
+}
+
+function hideAptitudeTooltip() {
+  aptitudeTooltip.hidden = true;
+}
+
+function bindAptitudeTooltip(element, character) {
+  element.addEventListener("mouseenter", (event) => showAptitudeTooltip(character, event));
+  element.addEventListener("mousemove", (event) => positionAptitudeTooltip(event.clientX, event.clientY));
+  element.addEventListener("mouseleave", hideAptitudeTooltip);
+  element.addEventListener("focus", () => {
+    const rect = element.getBoundingClientRect();
+    showAptitudeTooltip(character, { clientX: rect.right, clientY: rect.top });
+  });
+  element.addEventListener("blur", hideAptitudeTooltip);
+}
+
 function fnv1a(value) {
   let hash = 0x811c9dc5;
   for (let i = 0; i < value.length; i += 1) {
@@ -179,14 +273,14 @@ function extractRecordArray(data) {
 }
 
 function normalizeRecord(raw, index) {
-  const name = String(
+  const name = cleanCharacterName(
     raw?.name ??
     raw?.character_name ??
     raw?.characterName ??
     raw?.title ??
     raw?.label ??
     ""
-  ).trim();
+  );
 
   const imagePath = String(
     raw?.local_path ??
@@ -277,8 +371,14 @@ function buildFileLookup(files, getPath) {
 }
 
 function getCharacterImageUrl(character) {
+  if (character?.imageUrl) {
+    return new URL(character.imageUrl, document.baseURI).href;
+  }
   if (imageUrls.has(character.id)) {
     return imageUrls.get(character.id);
+  }
+  if (!(character?.imageBlob instanceof Blob)) {
+    return "";
   }
   const url = URL.createObjectURL(character.imageBlob);
   imageUrls.set(character.id, url);
@@ -346,6 +446,150 @@ function clearSelection() {
   renderAll();
 }
 
+
+function updateQuickDockVisibility() {
+  const shouldShow = characters.length > 0 && (!matrixIsVisible || Boolean(draggingCharacterId) || Boolean(selectedCharacterId));
+  quickMatrixDock.hidden = !shouldShow;
+}
+
+function beginCharacterDrag(characterId, event) {
+  draggingCharacterId = characterId;
+  document.body.classList.add("is-dragging");
+  event.dataTransfer.setData("text/plain", characterId);
+  event.dataTransfer.effectAllowed = "move";
+  hideAptitudeTooltip();
+  updateQuickDockVisibility();
+}
+
+function stopAutoScroll() {
+  autoScrollSpeed = 0;
+  if (autoScrollFrame) {
+    cancelAnimationFrame(autoScrollFrame);
+    autoScrollFrame = 0;
+  }
+}
+
+function runAutoScroll() {
+  if (!draggingCharacterId || autoScrollSpeed === 0) {
+    autoScrollFrame = 0;
+    return;
+  }
+  window.scrollBy(0, autoScrollSpeed);
+  autoScrollFrame = requestAnimationFrame(runAutoScroll);
+}
+
+function updateAutoScroll(clientY) {
+  if (!draggingCharacterId) return;
+  const edge = Math.min(130, window.innerHeight * 0.2);
+  let nextSpeed = 0;
+  if (clientY < edge) {
+    nextSpeed = -Math.max(5, ((edge - clientY) / edge) * 24);
+  } else if (clientY > window.innerHeight - edge) {
+    nextSpeed = Math.max(5, ((clientY - (window.innerHeight - edge)) / edge) * 24);
+  }
+  autoScrollSpeed = nextSpeed;
+  if (nextSpeed && !autoScrollFrame) {
+    autoScrollFrame = requestAnimationFrame(runAutoScroll);
+  } else if (!nextSpeed) {
+    stopAutoScroll();
+  }
+}
+
+function endCharacterDrag() {
+  draggingCharacterId = null;
+  document.body.classList.remove("is-dragging");
+  stopAutoScroll();
+  document.querySelectorAll(".drag-over").forEach((element) => element.classList.remove("drag-over"));
+  updateQuickDockVisibility();
+}
+
+function buildQuickMatrix() {
+  quickMatrixEl.innerHTML = "";
+
+  const corner = document.createElement("div");
+  corner.className = "quick-corner";
+  corner.textContent = "거리";
+  quickMatrixEl.appendChild(corner);
+
+  for (const style of STYLES) {
+    const header = document.createElement("div");
+    header.className = "quick-column-header";
+    header.dataset.style = style;
+    header.textContent = style;
+    quickMatrixEl.appendChild(header);
+  }
+
+  for (const distance of DISTANCES) {
+    const rowHeader = document.createElement("div");
+    rowHeader.className = "quick-row-header";
+    rowHeader.dataset.distance = distance;
+    rowHeader.textContent = distance;
+    quickMatrixEl.appendChild(rowHeader);
+
+    for (const style of STYLES) {
+      const key = slotKey(distance, style);
+      const slot = document.createElement("div");
+      slot.className = "quick-slot";
+      slot.dataset.slotKey = key;
+      slot.title = `${distance} · ${style}`;
+
+      slot.addEventListener("dragover", (event) => {
+        event.preventDefault();
+        event.dataTransfer.dropEffect = "move";
+        slot.classList.add("drag-over");
+      });
+      slot.addEventListener("dragleave", () => slot.classList.remove("drag-over"));
+      slot.addEventListener("drop", (event) => {
+        event.preventDefault();
+        slot.classList.remove("drag-over");
+        const id = event.dataTransfer.getData("text/plain") || draggingCharacterId;
+        if (id) placeCharacter(id, key);
+        endCharacterDrag();
+      });
+      slot.addEventListener("click", () => {
+        if (selectedCharacterId) placeCharacter(selectedCharacterId, key);
+      });
+      slot.addEventListener("dblclick", () => {
+        if (slotMap[key]) {
+          delete slotMap[key];
+          saveSlotMap();
+          renderAll();
+        }
+      });
+
+      const character = characterMap.get(slotMap[key]);
+      if (character) {
+        const card = document.createElement("div");
+        card.className = "quick-slot-character";
+        card.draggable = true;
+        card.tabIndex = 0;
+        card.dataset.characterId = character.id;
+        card.setAttribute("aria-label", `${character.name}, ${distance} ${style}`);
+        card.addEventListener("dragstart", (event) => beginCharacterDrag(character.id, event));
+        card.addEventListener("dragend", endCharacterDrag);
+        card.addEventListener("click", (event) => {
+          event.stopPropagation();
+          selectedCharacterId = character.id;
+          renderAll();
+        });
+
+        const image = document.createElement("img");
+        image.src = getCharacterImageUrl(character);
+        image.alt = character.name;
+        card.appendChild(image);
+        bindAptitudeTooltip(card, character);
+        slot.appendChild(card);
+      }
+
+      if (selectedCharacterId) slot.classList.add("selected-target");
+      quickMatrixEl.appendChild(slot);
+    }
+  }
+
+  const count = Object.values(slotMap).filter((id) => characterMap.has(id)).length;
+  quickDockStatus.textContent = `${count} / ${TOTAL_SLOTS}`;
+}
+
 function buildMatrix() {
   matrixEl.innerHTML = "";
 
@@ -386,8 +630,9 @@ function buildMatrix() {
       slot.addEventListener("drop", (event) => {
         event.preventDefault();
         slot.classList.remove("drag-over");
-        const id = event.dataTransfer.getData("text/plain");
+        const id = event.dataTransfer.getData("text/plain") || draggingCharacterId;
         if (id) placeCharacter(id, key);
+        endCharacterDrag();
       });
       slot.addEventListener("click", (event) => {
         if (event.target.closest(".remove-slot")) return;
@@ -416,11 +661,10 @@ function buildMatrix() {
         card.className = "slot-character";
         card.draggable = true;
         card.dataset.characterId = character.id;
-        card.title = `${character.name} — 끌어서 다른 칸으로 이동할 수 있습니다.`;
-        card.addEventListener("dragstart", (event) => {
-          event.dataTransfer.setData("text/plain", character.id);
-          event.dataTransfer.effectAllowed = "move";
-        });
+        card.tabIndex = 0;
+        card.setAttribute("aria-label", `${character.name} — 끌어서 다른 칸으로 이동할 수 있습니다.`);
+        card.addEventListener("dragstart", (event) => beginCharacterDrag(character.id, event));
+        card.addEventListener("dragend", endCharacterDrag);
         card.addEventListener("click", (event) => {
           if (event.target.closest(".remove-slot")) return;
           event.stopPropagation();
@@ -448,6 +692,7 @@ function buildMatrix() {
         });
 
         card.append(image, name, remove);
+        bindAptitudeTooltip(card, character);
         slot.appendChild(card);
       } else if (characterId) {
         delete slotMap[key];
@@ -510,10 +755,9 @@ function buildPool() {
     node.querySelector(".character-name").textContent = character.name;
     node.querySelector(".assigned-badge").textContent = assignedKey ? slotLabelFromKey(assignedKey) : "";
 
-    node.addEventListener("dragstart", (event) => {
-      event.dataTransfer.setData("text/plain", character.id);
-      event.dataTransfer.effectAllowed = "move";
-    });
+    node.addEventListener("dragstart", (event) => beginCharacterDrag(character.id, event));
+    node.addEventListener("dragend", endCharacterDrag);
+    bindAptitudeTooltip(node, character);
 
     node.addEventListener("click", (event) => {
       if (event.target.closest(".delete-character")) return;
@@ -563,9 +807,108 @@ function renderCompletion() {
 
 function renderAll() {
   buildMatrix();
+  buildQuickMatrix();
   buildPool();
   renderSelectionHint();
   renderCompletion();
+  updateQuickDockVisibility();
+}
+
+
+async function deleteCharacterRecords(ids) {
+  if (!ids.length) return;
+  const transaction = db.transaction(CHARACTER_STORE, "readwrite");
+  const store = transaction.objectStore(CHARACTER_STORE);
+  for (const id of ids) {
+    store.delete(id);
+  }
+  await transactionPromise(transaction);
+}
+
+async function ensureBundledCharacters() {
+  const response = await fetch(BUNDLED_DATA_URL, { cache: "no-cache" });
+  if (!response.ok) {
+    throw new Error(`기본 characters.json을 불러오지 못했습니다. (HTTP ${response.status})`);
+  }
+
+  const data = await response.json();
+  const normalizedRecords = extractRecordArray(data)
+    .map(normalizeRecord)
+    .filter(Boolean);
+
+  const savedCharacters = await getAllCharacters();
+  const existingByPath = new Map(
+    savedCharacters
+      .filter((character) => character.kind === "imported" || character.kind === BUNDLED_KIND)
+      .map((character) => [normalizePath(character.sourcePath).toLowerCase(), character])
+  );
+
+  const bundledRecords = [];
+  const staleIds = [];
+  let changedSlots = false;
+
+  for (const record of normalizedRecords) {
+    if (!record.imagePath) continue;
+
+    const id = makeImportedId(record.name, record.imagePath);
+    const sourcePathKey = normalizePath(record.imagePath).toLowerCase();
+    const previous = existingByPath.get(sourcePathKey);
+
+    if (previous && previous.id !== id) {
+      for (const key of Object.keys(slotMap)) {
+        if (slotMap[key] === previous.id) {
+          slotMap[key] = id;
+          changedSlots = true;
+        }
+      }
+      staleIds.push(previous.id);
+    }
+
+    bundledRecords.push({
+      id,
+      name: record.name,
+      imageUrl: record.imagePath,
+      sourcePath: record.imagePath,
+      kind: BUNDLED_KIND,
+      createdAt: data.scraped_at || new Date().toISOString()
+    });
+  }
+
+  if (!bundledRecords.length) {
+    throw new Error("기본 characters.json에 사용할 수 있는 캐릭터가 없습니다.");
+  }
+
+  await putCharacters(bundledRecords);
+  await deleteCharacterRecords([...new Set(staleIds)]);
+
+  if (changedSlots) {
+    saveSlotMap();
+  }
+
+  return bundledRecords.length;
+}
+
+async function migrateStoredCharacterNames() {
+  const savedCharacters = await getAllCharacters();
+  const changed = [];
+  for (const character of savedCharacters) {
+    const cleanedName = cleanCharacterName(character.name);
+    if (cleanedName && cleanedName !== character.name) {
+      changed.push({ ...character, name: cleanedName });
+    }
+  }
+  if (changed.length) {
+    await putCharacters(changed);
+  }
+  return changed.length;
+}
+
+function findExistingImportedId(sourcePath) {
+  const normalizedPath = normalizePath(sourcePath).toLowerCase();
+  const existing = characters.find((character) =>
+    character.kind === "imported" && normalizePath(character.sourcePath).toLowerCase() === normalizedPath
+  );
+  return existing?.id || null;
 }
 
 async function refreshCharacters() {
@@ -627,7 +970,7 @@ async function importZip(file) {
       const bytes = await entry.async("uint8array");
       const blob = new Blob([bytes], { type: mimeFromName(entry.name) });
       imported.push({
-        id: makeImportedId(record.name, normalizePath(entry.name)),
+        id: findExistingImportedId(entry.name) || makeImportedId(record.name, normalizePath(entry.name)),
         name: record.name,
         imageBlob: blob,
         sourcePath: normalizePath(entry.name),
@@ -683,7 +1026,7 @@ async function importSeparateFiles(jsonFile, imageFiles) {
     }
 
     imported.push({
-      id: makeImportedId(record.name, normalizePath(file.webkitRelativePath || file.name)),
+      id: findExistingImportedId(file.webkitRelativePath || file.name) || makeImportedId(record.name, normalizePath(file.webkitRelativePath || file.name)),
       name: record.name,
       imageBlob: file,
       sourcePath: normalizePath(file.webkitRelativePath || file.name),
@@ -929,7 +1272,7 @@ separateImportButton.addEventListener("click", async () => {
 
 customForm.addEventListener("submit", async (event) => {
   event.preventDefault();
-  const name = customNameInput.value.trim();
+  const name = cleanCharacterName(customNameInput.value);
   const imageFile = customImageInput.files[0];
 
   if (!name || !imageFile) return;
@@ -963,14 +1306,15 @@ clearSlotsButton.addEventListener("click", () => {
 });
 
 deleteAllButton.addEventListener("click", async () => {
-  const ok = confirm("캐릭터 이미지와 배치 정보를 모두 삭제할까요? 이 작업은 되돌릴 수 없습니다.");
+  const ok = confirm("직접 추가한 캐릭터와 배치 정보를 모두 삭제할까요? GitHub에 포함된 기본 캐릭터는 다시 복원됩니다.");
   if (!ok) return;
   await clearCharacterStore();
   slotMap = {};
   selectedCharacterId = null;
   saveSlotMap();
+  const bundledCount = await ensureBundledCharacters();
   await refreshCharacters();
-  setStatus("이 브라우저에 저장된 모든 데이터를 삭제했습니다.");
+  setStatus(`사용자 저장 데이터를 삭제하고 기본 캐릭터 ${bundledCount}명을 복원했습니다.`);
 });
 
 exportJsonButton.addEventListener("click", exportResultJson);
@@ -998,12 +1342,57 @@ poolDropZone.addEventListener("dragleave", () => poolDropZone.classList.remove("
 poolDropZone.addEventListener("drop", (event) => {
   event.preventDefault();
   poolDropZone.classList.remove("drag-over");
-  const characterId = event.dataTransfer.getData("text/plain");
+  const characterId = event.dataTransfer.getData("text/plain") || draggingCharacterId;
   if (!characterId) return;
   removeCharacterFromSlots(characterId);
   selectedCharacterId = null;
   renderAll();
+  endCharacterDrag();
 });
+
+
+quickDockToggle.addEventListener("click", () => {
+  const collapsed = quickMatrixDock.classList.toggle("collapsed");
+  quickDockToggle.textContent = collapsed ? "+" : "−";
+  quickDockToggle.setAttribute("aria-label", collapsed ? "빠른 배치표 펼치기" : "빠른 배치표 접기");
+  localStorage.setItem(QUICK_DOCK_COLLAPSED_KEY, collapsed ? "1" : "0");
+});
+
+function setupMatrixObserver() {
+  const target = document.querySelector(".matrix-panel");
+  if (!target) return;
+
+  if ("IntersectionObserver" in window) {
+    const observer = new IntersectionObserver((entries) => {
+      const entry = entries[0];
+      matrixIsVisible = Boolean(entry?.isIntersecting && entry.intersectionRatio >= 0.12);
+      updateQuickDockVisibility();
+    }, { threshold: [0, 0.12, 0.4] });
+    observer.observe(target);
+  } else {
+    const update = () => {
+      const rect = target.getBoundingClientRect();
+      matrixIsVisible = rect.bottom > 80 && rect.top < window.innerHeight - 80;
+      updateQuickDockVisibility();
+    };
+    window.addEventListener("scroll", update, { passive: true });
+    window.addEventListener("resize", update);
+    update();
+  }
+}
+
+document.addEventListener("dragover", (event) => {
+  updateAutoScroll(event.clientY);
+}, true);
+
+document.addEventListener("dragend", endCharacterDrag, true);
+document.addEventListener("drop", () => window.setTimeout(endCharacterDrag, 0), true);
+
+document.addEventListener("wheel", (event) => {
+  if (!draggingCharacterId) return;
+  event.preventDefault();
+  window.scrollBy(0, event.deltaY);
+}, { passive: false, capture: true });
 
 document.addEventListener("keydown", (event) => {
   if (event.key === "Escape" && selectedCharacterId) {
@@ -1015,8 +1404,37 @@ window.addEventListener("beforeunload", revokeAllImageUrls);
 
 (async function initialize() {
   try {
+    const collapsed = localStorage.getItem(QUICK_DOCK_COLLAPSED_KEY) === "1";
+    quickMatrixDock.classList.toggle("collapsed", collapsed);
+    quickDockToggle.textContent = collapsed ? "+" : "−";
+    quickDockToggle.setAttribute("aria-label", collapsed ? "빠른 배치표 펼치기" : "빠른 배치표 접기");
+
     db = await openDatabase();
+
+    let bundledCount = 0;
+    let bundledError = null;
+    try {
+      bundledCount = await ensureBundledCharacters();
+    } catch (error) {
+      bundledError = error;
+      console.warn("기본 캐릭터 자동 불러오기 실패:", error);
+    }
+
+    const migratedCount = await migrateStoredCharacterNames();
     await refreshCharacters();
+    setupMatrixObserver();
+
+    if (bundledError) {
+      const localHint = location.protocol === "file:"
+        ? " index.html을 직접 열기보다 GitHub Pages 또는 로컬 웹 서버에서 실행하세요."
+        : "";
+      setStatus(`기본 캐릭터 자동 불러오기 오류: ${bundledError.message}${localHint}`, true);
+    } else {
+      const migratedText = migratedCount
+        ? ` 저장된 이름 ${migratedCount}개도 정리했습니다.`
+        : "";
+      setStatus(`GitHub에 포함된 기본 캐릭터 ${bundledCount}명을 불러왔습니다.${migratedText}`);
+    }
   } catch (error) {
     console.error(error);
     setStatus(`초기화 오류: ${error.message}`, true);

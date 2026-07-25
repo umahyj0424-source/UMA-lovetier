@@ -734,3 +734,290 @@ progress {
     height: 125px;
   }
 }
+
+/* v1.1.0: 빠른 배치표와 적성 툴팁 */
+body.is-dragging,
+body.is-dragging * {
+  cursor: grabbing !important;
+}
+
+.quick-matrix-dock {
+  position: fixed;
+  top: 50%;
+  right: 14px;
+  z-index: 120;
+  width: 316px;
+  padding: 12px;
+  border: 1px solid rgba(234, 121, 145, .82);
+  border-radius: 14px;
+  background: rgba(17, 19, 21, .96);
+  box-shadow: 0 20px 55px rgba(0, 0, 0, .5);
+  transform: translateY(-50%);
+  backdrop-filter: blur(12px);
+  transition: opacity .18s ease, transform .18s ease, width .18s ease;
+}
+
+.quick-matrix-dock[hidden] {
+  display: none;
+}
+
+.quick-dock-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 9px;
+}
+
+.quick-dock-header > div {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.quick-dock-header strong {
+  font-size: 15px;
+}
+
+.quick-dock-header span {
+  color: var(--pink-strong);
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.quick-dock-header button {
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border: 1px solid #525960;
+  border-radius: 8px;
+  background: #292e33;
+  cursor: pointer;
+  font-size: 18px;
+  font-weight: 900;
+}
+
+.quick-matrix {
+  display: grid;
+  grid-template-columns: 52px repeat(4, 1fr);
+  overflow: hidden;
+  border: 1px solid #424950;
+  border-radius: 9px;
+  background: #111315;
+}
+
+.quick-corner,
+.quick-column-header,
+.quick-row-header,
+.quick-slot {
+  min-width: 0;
+  border-right: 1px solid #353b41;
+  border-bottom: 1px solid #353b41;
+}
+
+.quick-corner,
+.quick-column-header {
+  display: grid;
+  place-items: center;
+  min-height: 31px;
+  background: #25292d;
+  font-size: 10px;
+  font-weight: 900;
+}
+
+.quick-column-header[data-style="도주"] { color: #ff726d; }
+.quick-column-header[data-style="선행"] { color: #f3c55c; }
+.quick-column-header[data-style="선입"] { color: #76c8ff; }
+.quick-column-header[data-style="추입"] { color: #be8cff; }
+
+.quick-row-header {
+  display: grid;
+  place-items: center;
+  min-height: 49px;
+  padding: 2px;
+  color: #111;
+  font-size: 10px;
+  font-weight: 950;
+  text-align: center;
+}
+
+.quick-row-header[data-distance="단거리"] { background: #ff858d; }
+.quick-row-header[data-distance="마일"] { background: #ffbc7b; }
+.quick-row-header[data-distance="중거리"] { background: #ffe183; }
+.quick-row-header[data-distance="장거리"] { background: #b7ef7a; }
+.quick-row-header[data-distance="더트"] { background: #76d5ec; }
+
+.quick-slot {
+  position: relative;
+  display: grid;
+  place-items: center;
+  min-height: 49px;
+  background: #17191b;
+  transition: background .12s ease, box-shadow .12s ease;
+}
+
+.quick-slot::after {
+  content: "+";
+  color: #4d555d;
+  font-size: 16px;
+  font-weight: 900;
+}
+
+.quick-slot.drag-over,
+.quick-slot.selected-target {
+  background: rgba(234, 121, 145, .2);
+  box-shadow: inset 0 0 0 2px var(--pink);
+}
+
+.quick-slot-character {
+  position: absolute;
+  inset: 2px;
+  overflow: hidden;
+  border: 1px solid var(--pink);
+  border-radius: 5px;
+  background: #0e1012;
+  cursor: grab;
+}
+
+.quick-slot-character img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  object-position: center bottom;
+}
+
+.quick-matrix-dock > p {
+  margin: 8px 0 0;
+  color: #8f98a1;
+  font-size: 10px;
+  line-height: 1.4;
+  text-align: center;
+}
+
+.quick-matrix-dock.collapsed {
+  width: 54px;
+  padding: 9px;
+}
+
+.quick-matrix-dock.collapsed .quick-dock-header {
+  margin: 0;
+}
+
+.quick-matrix-dock.collapsed .quick-dock-header > div,
+.quick-matrix-dock.collapsed .quick-matrix,
+.quick-matrix-dock.collapsed > p {
+  display: none;
+}
+
+.quick-matrix-dock.collapsed .quick-dock-header button {
+  width: 34px;
+  height: 42px;
+}
+
+.aptitude-tooltip {
+  position: fixed;
+  z-index: 500;
+  width: min(360px, calc(100vw - 20px));
+  padding: 13px;
+  border: 1px solid rgba(234, 121, 145, .88);
+  border-radius: 12px;
+  background: rgba(15, 17, 19, .98);
+  box-shadow: 0 16px 42px rgba(0, 0, 0, .55);
+  pointer-events: none;
+  color: #f6f7f8;
+}
+
+.aptitude-tooltip[hidden] {
+  display: none;
+}
+
+.aptitude-tooltip h3 {
+  margin: 0 0 9px;
+  color: #fff;
+  font-size: 15px;
+}
+
+.aptitude-section + .aptitude-section {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid #363c42;
+}
+
+.aptitude-section-title {
+  display: block;
+  margin-bottom: 5px;
+  color: #9ea7af;
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: .08em;
+}
+
+.aptitude-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.aptitude-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 6px;
+  border: 1px solid #40474e;
+  border-radius: 7px;
+  background: #22262a;
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+.aptitude-rank {
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 5px;
+  color: #111;
+  font-size: 12px;
+  font-weight: 950;
+}
+
+.aptitude-rank[data-rank="S"] { background: #ff7a95; }
+.aptitude-rank[data-rank="A"] { background: #76e39c; }
+.aptitude-rank[data-rank="B"] { background: #75c8ff; }
+.aptitude-rank[data-rank="C"] { background: #f4d96d; }
+.aptitude-rank[data-rank="D"] { background: #f0aa66; }
+.aptitude-rank[data-rank="E"] { background: #c79be8; }
+.aptitude-rank[data-rank="F"] { background: #9ca4ad; }
+.aptitude-rank[data-rank="G"] { background: #6f767d; color: #fff; }
+
+.aptitude-unavailable {
+  margin: 0;
+  color: #a7afb7;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+@media (max-width: 1180px) {
+  .quick-matrix-dock {
+    top: auto;
+    right: 10px;
+    bottom: 10px;
+    width: 300px;
+    transform: none;
+  }
+}
+
+@media (max-width: 620px) {
+  .quick-matrix-dock {
+    right: 8px;
+    bottom: 8px;
+    left: 8px;
+    width: auto;
+  }
+
+  .quick-matrix-dock.collapsed {
+    right: 8px;
+    left: auto;
+    width: 54px;
+  }
+}
