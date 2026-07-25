@@ -3,8 +3,8 @@
   "source_title": "틀:우마무스메 프리티 더비의 등장 우마무스메 - 나무위키",
   "scraped_at": "2026-07-25T11:23:09.090Z",
   "output_format": "PNG",
-  "found_count": 139,
-  "success_count": 139,
+  "found_count": 142,
+  "success_count": 142,
   "failure_count": 0,
   "debug": {
     "list_labels": 2,
@@ -1543,8 +1543,46 @@
       "mime_type": "image/png",
       "source_mime_type": "image/webp",
       "original_name": "프로필 이미지 타이틀홀더"
+    },
+    {
+      "image_url": "",
+      "name": "맨하탄 카페",
+      "order": 140,
+      "page_url": "https://namu.wiki/w/%EB%A7%A8%ED%95%98%ED%83%84%20%EC%B9%B4%ED%8E%98%28%EC%9A%B0%EB%A7%88%EB%AC%B4%EC%8A%A4%EB%A9%94%20%ED%94%84%EB%A6%AC%ED%8B%B0%20%EB%8D%94%EB%B9%84%29",
+      "filename": "140_프로필 이미지 맨하탄 카페.png",
+      "local_path": "images/140_프로필 이미지 맨하탄 카페.png",
+      "mime_type": "image/png",
+      "source_mime_type": "image/png",
+      "original_name": "프로필 이미지 맨하탄 카페",
+      "addition_type": "manual"
+    },
+    {
+      "image_url": "",
+      "name": "베르시나",
+      "order": 141,
+      "page_url": "https://namu.wiki/w/%EB%B2%A0%EB%A5%B4%EC%8B%9C%EB%82%98%28%EC%9A%B0%EB%A7%88%EB%AC%B4%EC%8A%A4%EB%A9%94%20%ED%94%84%EB%A6%AC%ED%8B%B0%20%EB%8D%94%EB%B9%84%29",
+      "filename": "141_프로필 이미지 베르시나.png",
+      "local_path": "images/141_프로필 이미지 베르시나.png",
+      "mime_type": "image/png",
+      "source_mime_type": "image/png",
+      "original_name": "프로필 이미지 베르시나",
+      "addition_type": "manual"
+    },
+    {
+      "image_url": "",
+      "name": "에스푸아르 시티",
+      "order": 142,
+      "page_url": "https://namu.wiki/w/%EC%97%90%EC%8A%A4%ED%91%B8%EC%95%84%EB%A5%B4%20%EC%8B%9C%ED%8B%B0%28%EC%9A%B0%EB%A7%88%EB%AC%B4%EC%8A%A4%EB%A9%94%20%ED%94%84%EB%A6%AC%ED%8B%B0%20%EB%8D%94%EB%B9%84%29",
+      "filename": "142_프로필 이미지 에스푸아르 시티.png",
+      "local_path": "images/142_프로필 이미지 에스푸아르 시티.png",
+      "mime_type": "image/png",
+      "source_mime_type": "image/png",
+      "original_name": "프로필 이미지 에스푸아르 시티",
+      "addition_type": "manual"
     }
   ],
-  "site_bundle_version": "1.2.0",
-  "site_bundle_note": "GitHub Pages 자동 불러오기용 데이터. name 필드는 페이지 URL을 기준으로 정리했습니다."
+  "site_bundle_version": "1.2.1",
+  "site_bundle_note": "GitHub Pages 자동 불러오기용 데이터. 기존 139명에 맨하탄 카페, 베르시나, 에스푸아르 시티를 수동 추가했습니다.",
+  "base_scraped_count": 139,
+  "manual_added_count": 3
 }

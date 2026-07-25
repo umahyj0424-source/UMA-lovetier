@@ -55,6 +55,9 @@ let autoScrollFrame = 0;
 const aptitudeByNormalizedName = new Map(
   Object.entries(window.UMA_APTITUDE_DB?.characters || {}).map(([name, data]) => [normalizeNameForMatch(name), data])
 );
+const aptitudeUnavailableByNormalizedName = new Map(
+  Object.entries(window.UMA_APTITUDE_DB?.unavailableCharacters || {}).map(([name, reason]) => [normalizeNameForMatch(name), reason])
+);
 
 function slotKey(distance, style) {
   return `${distance}|${style}`;
@@ -209,7 +212,10 @@ function aptitudeChips(values) {
 function aptitudeTooltipHtml(character) {
   const aptitude = getAptitudeForCharacter(character);
   if (!aptitude) {
-    return `<h3>${escapeHtml(character.name)}</h3><p class="aptitude-unavailable">첨부된 DB에서 이 이름과 일치하는 적성 정보를 찾지 못했습니다.</p>`;
+    const normalizedName = normalizeNameForMatch(cleanCharacterName(character?.name));
+    const reason = aptitudeUnavailableByNormalizedName.get(normalizedName)
+      || "첨부된 DB에서 이 이름과 일치하는 육성 적성 정보를 찾지 못했습니다.";
+    return `<h3>${escapeHtml(character.name)}</h3><p class="aptitude-unavailable">${escapeHtml(reason)}</p>`;
   }
   return `
     <h3>${escapeHtml(character.name)}</h3>

@@ -1,4 +1,4 @@
-# 애정말딸 (각질/거리별) — GitHub Pages 패키지 v1.2.0
+# 애정말딸 (각질/거리별) — GitHub Pages 패키지 v1.2.1
 
 단거리·마일·중거리·장거리·더트 × 도주·선행·선입·추입의 20칸에
 좋아하는 우마무스메를 한 명씩 배치하는 정적 웹사이트입니다.
@@ -8,7 +8,7 @@
 - 사이트 본체: `index.html`, `style.css`, `app.js`
 - 적성 데이터: `aptitude-data.js`
 - 캐릭터 목록: `characters.json`, `characters.csv`
-- 캐릭터 이미지 139장: `images/`
+- 캐릭터 이미지 142장: `images/`
 - 원본 추출 목록: `source-data/`
 - GitHub Pages용 `.nojekyll`
 
@@ -32,7 +32,7 @@
 ## 자동 데이터 불러오기
 
 GitHub Pages에서 처음 접속하면 루트의 `characters.json`과 `images/`를 이용해
-기본 캐릭터 139명을 자동으로 등록합니다.
+기본 캐릭터 142명을 자동으로 등록합니다.
 
 브라우저에 저장되는 항목:
 
@@ -73,3 +73,17 @@ python -m http.server 8000
 - `source-data/characters-original.csv`: 사용자가 제공한 원본 CSV
 
 이미지와 문서 데이터의 권리는 각 원 권리자 및 출처의 이용 조건을 따릅니다.
+
+
+## v1.2.1 수동 추가 캐릭터
+
+- 맨하탄 카페
+- 베르시나
+- 에스푸아르 시티
+
+이미지 파일만 `images/`에 넣으면 사이트 목록에는 나타나지 않습니다.
+반드시 루트의 `characters.json`과 `characters.csv`에도 캐릭터 항목이 있어야 합니다.
+
+맨하탄 카페는 첨부된 적성 DB에 육성 적성 정보가 있어 툴팁이 표시됩니다.
+베르시나와 에스푸아르 시티는 첨부된 DB에 이름은 존재하지만
+육성 카드 적성 행이 없어 툴팁에 해당 사유가 표시됩니다.
